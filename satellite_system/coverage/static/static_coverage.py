@@ -59,7 +59,6 @@ class StaticCoverage:
         min_lons = (positions["lon"] - lon_half_width) % 360
         max_lons = (positions["lon"] + lon_half_width) % 360
 
-
         center_lats = self.centers["lat"]
 
         for i in range(len(positions)):
@@ -90,7 +89,6 @@ class StaticCoverage:
             final_mask = (cos_aperture_angle <= cos_center).ravel()
 
             result = np.concatenate((result, candidate_points[final_mask]))
-
 
         return np.unique(result)
 
