@@ -60,5 +60,3 @@ class PosPrediction:
         result = np.concatenate(results)
         self.cache[target_time] = result
         return result
-        """_summary_
-        """

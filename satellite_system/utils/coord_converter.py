@@ -42,41 +42,40 @@ DecartCoord_dtype = np.dtype([
 @singleton
 class CoordConverter:
     @staticmethod
+    @staticmethod
     def phase_to_geo_np(phase_coord_np: npt.NDArray[PhaseCoord_dtype]) -> npt.NDArray[GeoCoord_dtype]:
-        longitude_asceding_nodes = phase_coord_np["longitude_asc"]
-        inclins = phase_coord_np["inclin"]
-        phases_on_orbit = phase_coord_np["phase_on_orbit"]
+
+        longitude_asc = phase_coord_np["longitude_asc"]
+        inclin = phase_coord_np["inclin"]
+        phase = phase_coord_np["phase_on_orbit"]
         heights = phase_coord_np["height"]
 
-        longitude_asceding_nodes_rad = np.radians(longitude_asceding_nodes)
-        inclins_rad = np.radians(inclins)
-        phases_on_orbit_rad = np.radians(phases_on_orbit)
+        lon_asc_rad = np.radians(longitude_asc)
+        inclin_rad = np.radians(inclin)
+        phase_rad = np.radians(phase)
 
-        sin_lats = np.clip(
-            np.sin(phases_on_orbit_rad) * np.sin(inclins_rad),
-            -1.0, 1.0
-        )
+        sin_lat = np.sin(phase_rad) * np.sin(inclin_rad)
+        sin_lat = np.clip(sin_lat, -1.0, 1.0)
+        lat_rad = np.arcsin(sin_lat)
+        lat = np.degrees(lat_rad)
 
-        lats_rad = np.arcsin(sin_lats)
-        lats = np.degrees(lats_rad)
-
-        def formula(longitude_asceding_nodes: np.ndarray, phases_on_orbit_rad: np.ndarray, inclins_rad: np.ndarray) -> np.ndarray:
-            return (longitude_asceding_nodes + np.degrees(
+        lon = (
+            longitude_asc +
+            np.degrees(
                 np.arctan2(
-                    np.sin(phases_on_orbit_rad) * np.cos(inclins_rad),
-                    np.cos(phases_on_orbit_rad)
+                    np.sin(phase_rad) * np.cos(inclin_rad),
+                    np.cos(phase_rad)
                 )
-            )) % 360
+            )
+        ) % 360
 
-        conditions = [phases_on_orbit_rad == 90, inclins_rad != 90, (0.5 * np.pi < phases_on_orbit_rad) & (phases_on_orbit_rad < 1.5 * np.pi), True]
-        choices = [0, formula(longitude_asceding_nodes_rad, phases_on_orbit_rad, inclins_rad), (longitude_asceding_nodes + 180) % 360, longitude_asceding_nodes]
-        lons = np.select(conditions, choices)
-
-        result = np.empty(len(lats), dtype=GeoCoord_dtype)
-        result["lat"] = lats
-        result["lon"] = lons
+        result = np.empty(len(lat), dtype=GeoCoord_dtype)
+        result["lat"] = lat
+        result["lon"] = lon
         result["height"] = heights
+
         return result
+
 
 
     @staticmethod
@@ -132,5 +131,5 @@ class CoordConverter:
         geo_coord_np["lat"] = geo_2d_coord_np["lat"]
         geo_coord_np["lon"] = geo_2d_coord_np["lon"]
         geo_coord_np["cell"] = geo_2d_coord_np["cell"]
-        geo_coord_np["height"] = EARTH_RADIUS
+        geo_coord_np["height"] = 0.0
         return CoordConverter().geo_to_dec_np(geo_coord_np)

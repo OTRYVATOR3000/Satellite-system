@@ -1,4 +1,5 @@
 from typing import List, Set, Tuple
+import math
 import numpy as np
 import numpy.typing as npt
 from datetime import *
@@ -34,9 +35,12 @@ class StaticCoverage:
         view_angles = np.array([satellite.view_angle for orbit in self.group.orbits for satellite in orbit.satellites])
         view_angles_rad = np.radians(view_angles)
 
-        self.aperture_angles = np.degrees(
-            np.arcsin((1 + heights / EARTH_RADIUS) * np.sin(
-                view_angles_rad))) - view_angles
+        R = EARTH_RADIUS
+        h = heights
+        theta = view_angles_rad
+
+        betta = np.arcsin((R + h) / R * np.sin(theta))
+        self.aperture_angles = np.degrees(betta - theta)
 
     def get_covered_centers_union(self, target_time: datetime) -> npt.NDArray[CenterCoord_dtype]:
         if self.centers is None:
@@ -49,8 +53,12 @@ class StaticCoverage:
 
         min_lats = np.clip(positions["lat"] - self.aperture_angles, -90, 90)
         max_lats = np.clip(positions["lat"] + self.aperture_angles, -90, 90)
-        min_lons = (positions["lon"] - self.aperture_angles) % 360
-        max_lons = (positions["lon"] + self.aperture_angles) % 360
+        lat_rad = np.radians(positions["lat"])
+        lon_half_width = self.aperture_angles / np.maximum(np.cos(lat_rad), 1e-6)
+
+        min_lons = (positions["lon"] - lon_half_width) % 360
+        max_lons = (positions["lon"] + lon_half_width) % 360
+
 
         center_lats = self.centers["lat"]
 
@@ -63,7 +71,7 @@ class StaticCoverage:
             upper_bound = np.searchsorted(center_lats, lat_max, side="right")
             candidate_points = self.centers[lower_bound:upper_bound]
 
-            center_lons = candidate_points["lon"]
+            center_lons = candidate_points["lon"] % 360
             if lon_min <= lon_max:
                 lon_mask = (center_lons >= lon_min) & (center_lons <= lon_max)
             else:
@@ -89,4 +97,4 @@ class StaticCoverage:
     def calculate_coverage(self, target_time: datetime) -> float:
         if target_time in self.cache:
             return self.cache[target_time]
-        return HexManager().get_square(self.get_covered_centers_union(target_time)["cell"]) / EARTH_SQUARE_KM2
+        return HexManager().get_square(self.get_covered_centers_union(target_time)["cell"]) / (4 * math.pi * EARTH_RADIUS**2)

@@ -43,16 +43,18 @@ def coverage(height, orb_inclin, longitude_asc, count_orb, count_sat, angle, res
   assert error <= 5
 
 def test_coverage_1():
-  coverage(500, 45, 45, 1, 1, 40, 4)
+  coverage(400, 45, 45, 1, 4, 40, 4) # height (km), orbit inclination, longitude of the ascrding node,
+                                     # count of orbits, count of satellites, half of the viewing angle,
+                                     # resolution
 
 def test_coverage_2():
   coverage(600, 20, 12, 1, 1, 50, 4)
 
 def test_coverage_3():
-  coverage(700, 70, 3, 1, 1, 30, 4)
+  coverage(700, 70, 3, 1, 2, 30, 4)
 
 def test_coverage_4():
-  coverage(1000, 54, 124, 1, 1, 40, 4)
+  coverage(1000, 54, 124, 1, 5, 40, 4)
 
 def test_coverage_5():
-  coverage(800, 25, 350, 1, 1, 40, 4)
+  coverage(800, 25, 350, 2, 2, 40, 4)
