@@ -4,14 +4,16 @@ import numpy.typing as npt
 from datetime import *
 from satellite_system.pos_prediction.pos_prediction import *
 from satellite_system.groups.group import Group
-from satellite_system.utils.constants import EARTH_RADIUS
+from satellite_system.utils.constants import EARTH_RADIUS, EARTH_SQUARE_KM2
 from satellite_system.utils.hex_manager import HexManager
 from satellite_system.utils.coord_converter import  *
+from numpy.lib.recfunctions import structured_to_unstructured
 
 
 CenterCoord_dtype = np.dtype([
     ("lat", float),
     ("lon", float),
+    ("cell", "U15")
 ])
 
 
@@ -69,18 +71,22 @@ class StaticCoverage:
             candidate_points = candidate_points[lon_mask]
 
             sat_structured_np = CoordConverter().geo_to_dec_single(positions["lat"][i], positions["lon"][i], positions["height"][i])
-            sat_np = sat_structured_np.view((float, 3)).T
+            sat_np = structured_to_unstructured(sat_structured_np[['x', 'y', 'z']]).T
+
 
             candidates_structured_np = CoordConverter().geo_2d_to_dec_np(candidate_points)
-            candidates_np = candidates_structured_np.view((float, 3))
-            cos_center = (candidates_np @ sat_np) / np.linalg.norm(candidates_np, axis=1, keepdims=True) / np.linalg.norm(sat_np)
+            candidates_coords = structured_to_unstructured(candidates_structured_np[['x', 'y', 'z']])
+
+            cos_center = (candidates_coords @ sat_np) / np.linalg.norm(candidates_coords, axis=1, keepdims=True) / np.linalg.norm(sat_np)
             cos_aperture_angle = np.cos(np.radians(self.aperture_angles[i]))
             final_mask = (cos_aperture_angle <= cos_center).ravel()
+
             result = np.concatenate((result, candidate_points[final_mask]))
+
 
         return np.unique(result)
 
     def calculate_coverage(self, target_time: datetime) -> float:
         if target_time in self.cache:
             return self.cache[target_time]
-        return len(self.get_covered_centers_union(target_time)) / HexManager().get_total_number(self.resolution)
+        return HexManager().get_square(self.get_covered_centers_union(target_time)["cell"]) / EARTH_SQUARE_KM2

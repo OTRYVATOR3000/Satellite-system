@@ -20,19 +20,19 @@ class HexManager:
       """
       return h3.uncompact_cells(h3.get_res0_cells(), res)
 
-  def __get_all_centers(self, cells : Set[str]) -> List[Tuple[float, float]]:
+  def __get_all_centers(self, cells : Set[str]) -> List[Tuple[float, float, str]]:
       """Return the center points of all H3 cells in ''cells''
 
       Args:
           cells (Set[str])
 
       Returns:
-          List[Tuple[float, float]]
+          List[Tuple[float, float, str]]
       """
       centers = []
 
       for i in cells:
-          centers.append(h3.cell_to_latlng(i))
+          centers.append((h3.cell_to_latlng(i)[0], h3.cell_to_latlng(i)[1], i))
 
       return centers
 
@@ -47,7 +47,7 @@ class HexManager:
       """
       return h3.get_num_cells(res)
 
-  def get_centers(self, resolution: int) -> List[Tuple[float, float]]:
+  def get_centers(self, resolution: int) -> List[Tuple[float, float, str]]:
       """Return the center points of all cells of resolution ''resrolution''
 
       Args:
@@ -68,3 +68,19 @@ class HexManager:
       self.cells[resolution] = self.__get_all_centers(self.__get_all_cells(resolution))
 
       return self.cells[resolution]
+
+
+  def get_square(self, cells : List[str]) -> float:
+      """Return the total area of cells
+
+      Args:
+          cells (List[str])
+
+      Returns:
+          float
+      """
+      sum = 0
+
+      for i in cells:
+          sum += h3.cell_area(str(i), 'km^2')
+      return sum

@@ -4,6 +4,13 @@ import numpy.typing as npt
 from satellite_system.utils.constants import EARTH_RADIUS
 from collections import namedtuple
 
+GeoCoord_dtype_cell = np.dtype([
+    ("lat", float),
+    ("lon", float),
+    ("height", float),
+    ("cell", "U15")
+])
+
 GeoCoord_dtype = np.dtype([
     ("lat", float),
     ("lon", float),
@@ -14,7 +21,8 @@ GeoCoord = namedtuple("GeoCoord", ["lat", "lon", "height"])
 
 Geo2DCoord_dtype = np.dtype([
     ("lat", float),
-    ("lon", float)
+    ("lon", float),
+    ("cell", "U15")
 ])
 
 PhaseCoord_dtype = np.dtype([
@@ -27,7 +35,8 @@ PhaseCoord_dtype = np.dtype([
 DecartCoord_dtype = np.dtype([
     ("x", float),
     ("y", float),
-    ("z", float)
+    ("z", float),
+    ("cell", "U15")
 ])
 
 @singleton
@@ -71,7 +80,29 @@ class CoordConverter:
 
 
     @staticmethod
-    def geo_to_dec_np(geo_coord_np: npt.NDArray[GeoCoord_dtype]) -> npt.NDArray[DecartCoord_dtype]:
+    def geo_to_dec_np(geo_coord_np: npt.NDArray[GeoCoord_dtype_cell]) -> npt.NDArray[DecartCoord_dtype]:
+        lats = geo_coord_np["lat"]
+        lons = geo_coord_np["lon"]
+        heights = geo_coord_np["height"]
+
+        lats_rad = np.radians(lats)
+        lons_rad = np.radians(lons)
+
+        xs = (EARTH_RADIUS + heights) * np.cos(lats_rad) * np.cos(lons_rad)
+        ys = (EARTH_RADIUS + heights) * np.cos(lats_rad) * np.sin(lons_rad)
+        zs = (EARTH_RADIUS + heights) * np.sin(lats_rad)
+
+        result = np.empty(len(lats), dtype=DecartCoord_dtype)
+        result["x"] = xs
+        result["y"] = ys
+        result["z"] = zs
+
+        result["cell"] = geo_coord_np["cell"]
+
+        return result
+
+    @staticmethod
+    def geo_to_dec_np_sat(geo_coord_np: npt.NDArray[GeoCoord_dtype]) -> npt.NDArray[DecartCoord_dtype]:
         lats = geo_coord_np["lat"]
         lons = geo_coord_np["lon"]
         heights = geo_coord_np["height"]
@@ -93,12 +124,13 @@ class CoordConverter:
     @staticmethod
     def geo_to_dec_single(lat: float, lon: float, height: float) -> npt.NDArray[GeoCoord_dtype]:
         geo_coord_np = np.array([(lat, lon, height)], dtype=GeoCoord_dtype)
-        return CoordConverter().geo_to_dec_np(geo_coord_np)
+        return CoordConverter().geo_to_dec_np_sat(geo_coord_np)
 
     @staticmethod
     def geo_2d_to_dec_np(geo_2d_coord_np: npt.NDArray[Geo2DCoord_dtype]) -> npt.NDArray[DecartCoord_dtype]:
-        geo_coord_np = np.empty(len(geo_2d_coord_np), dtype=GeoCoord_dtype)
+        geo_coord_np = np.empty(len(geo_2d_coord_np), dtype=GeoCoord_dtype_cell)
         geo_coord_np["lat"] = geo_2d_coord_np["lat"]
         geo_coord_np["lon"] = geo_2d_coord_np["lon"]
+        geo_coord_np["cell"] = geo_2d_coord_np["cell"]
         geo_coord_np["height"] = EARTH_RADIUS
         return CoordConverter().geo_to_dec_np(geo_coord_np)
